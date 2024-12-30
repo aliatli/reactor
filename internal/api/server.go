@@ -1,23 +1,24 @@
 package api
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/aliatli/reactor/internal/core"
+	"github.com/aliatli/reactor/internal/db"
 	"github.com/gorilla/mux"
 )
 
 type Server struct {
 	router           *mux.Router
 	stateDefinitions map[string]core.StateDefinition
+	db               *db.Database
 }
 
-func NewServer() *Server {
+func NewServer(database *db.Database) *Server {
 	s := &Server{
 		router:           mux.NewRouter(),
 		stateDefinitions: make(map[string]core.StateDefinition),
+		db:               database,
 	}
 	s.routes()
 	return s
@@ -49,18 +50,4 @@ func (s *Server) routes() {
 
 func (s *Server) Router() *mux.Router {
 	return s.router
-}
-
-func (s *Server) handleDeleteState(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	stateName := vars["name"]
-	log.Printf("DELETE /api/states/%s - Deleting state", stateName)
-
-	delete(s.stateDefinitions, stateName)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "success",
-	})
 }

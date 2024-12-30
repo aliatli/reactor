@@ -101,12 +101,25 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave, onStateC
             type: 'stateNode',
             data: { 
                 label: state.name,
-                onDelete: handleDeleteState  // Pass delete handler to node
+                onDelete: handleDeleteState
             },
-            position: state.position || { x: Math.random() * 500, y: Math.random() * 500 }
+            position: state.position
         }));
         setNodes(stateNodes);
-    }, [states, setNodes, handleDeleteState]);
+
+        // Restore edges
+        const allEdges = states.flatMap(state => 
+            (state.edges || []).map(edge => ({
+                id: `${edge.source}-${edge.target}`,
+                source: edge.source,
+                target: edge.target,
+                sourceHandle: edge.sourceHandle,
+                style: { stroke: edge.sourceHandle === 'success' ? '#4CAF50' : '#f44336' },
+                label: edge.sourceHandle === 'success' ? 'Success' : 'Failure'
+            }))
+        );
+        setEdges(allEdges);
+    }, [states, setNodes, setEdges, handleDeleteState]);
 
     const onConnect = useCallback((connection: Connection) => {
         const sourceNode = nodes.find(n => n.id === connection.source);
@@ -123,14 +136,42 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave, onStateC
                 label: isSuccess ? 'Success' : 'Failure'
             };
             setEdges((eds) => [...eds, edge]);
+
+            // Save the updated state with new edge
+            const stateDefinition: StateDefinition = {
+                name: sourceNode.id,
+                position: {
+                    x: sourceNode.position.x,
+                    y: sourceNode.position.y
+                },
+                preliminaryActions: [],
+                edges: [...edges, edge],
+                transitions: {
+                    success: edges.find(e => e.source === sourceNode.id && e.sourceHandle === 'success')?.target || 'none',
+                    failure: edges.find(e => e.source === sourceNode.id && e.sourceHandle === 'failure')?.target || 'none'
+                }
+            };
+
+            fetch('http://localhost:8080/api/states', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(stateDefinition),
+            }).catch(error => {
+                console.error('Error saving edge:', error);
+            });
         }
-    }, [nodes, setEdges]);
+    }, [nodes, edges, setEdges]);
 
     const handleSave = () => {
         const stateDefinitions = nodes.reduce((acc, node) => {
             acc[node.id] = {
                 name: node.id,
-                position: node.position,
+                position: {
+                    x: node.position.x,
+                    y: node.position.y
+                },
                 preliminaryActions: [],
                 transitions: {
                     success: edges.find(e => e.source === node.id && e.sourceHandle === 'success')?.target || 'none',
@@ -149,9 +190,15 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave, onStateC
             return;
         }
 
+        const position = {
+            x: Math.random() * 500,
+            y: Math.random() * 500
+        };
+
         const newState: StateDefinition = {
             name: newStateName,
             preliminaryActions: [],
+            position: position,
             transitions: {
                 success: '',
                 failure: ''
@@ -175,8 +222,12 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave, onStateC
             // Add node to flow
             const newNode = {
                 id: newStateName,
-                data: { label: newStateName },
-                position: { x: Math.random() * 500, y: Math.random() * 500 }
+                type: 'stateNode',
+                data: { 
+                    label: newStateName,
+                    onDelete: handleDeleteState
+                },
+                position: position
             };
             setNodes((nds) => [...nds, newNode]);
             setNewStateName('');
@@ -188,6 +239,32 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave, onStateC
             alert('Failed to create state');
         });
     };
+
+    const onNodeDragStop = useCallback((event: any, node: Node) => {
+        // Save the state with new position
+        const stateDefinition: StateDefinition = {
+            name: node.id,
+            position: {
+                x: node.position.x,
+                y: node.position.y
+            },
+            preliminaryActions: [],
+            transitions: {
+                success: edges.find(e => e.source === node.id && e.sourceHandle === 'success')?.target || 'none',
+                failure: edges.find(e => e.source === node.id && e.sourceHandle === 'failure')?.target || 'none'
+            }
+        };
+
+        fetch('http://localhost:8080/api/states', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(stateDefinition),
+        }).catch(error => {
+            console.error('Error updating state position:', error);
+        });
+    }, [edges]);
 
     return (
         <div style={{ width: '100%', height: '100%' }}>
@@ -216,6 +293,7 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave, onStateC
                     onConnect={onConnect}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
+                    onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     fitView
                 >

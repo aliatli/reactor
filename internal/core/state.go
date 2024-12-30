@@ -9,6 +9,7 @@ type StateDefinition struct {
 	PreliminaryActions []PrimitiveChain `json:"preliminaryActions"`
 	MainAction         string           `json:"mainAction,omitempty"`
 	Position           Position         `json:"position"`
+	Edges              []Edge           `json:"edges,omitempty"`
 	Transitions        struct {
 		Success string `json:"success"`
 		Failure string `json:"failure"`
@@ -24,4 +25,10 @@ type PrimitiveChain struct {
 type Position struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+}
+
+type Edge struct {
+	Source       string `json:"source"`
+	Target       string `json:"target"`
+	SourceHandle string `json:"sourceHandle"`
 }

@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/aliatli/reactor/internal/core"
+	"github.com/aliatli/reactor/internal/models"
+	"github.com/gorilla/mux"
 )
 
 func (s *Server) handleSaveFlow(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +22,45 @@ func (s *Server) handleSaveFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Save each state to the database
+	for _, stateDefinition := range flow.States {
+		// Convert primitive chains
+		modelChains := make([]models.PrimitiveChain, len(stateDefinition.PreliminaryActions))
+		for i, chain := range stateDefinition.PreliminaryActions {
+			modelChains[i] = models.PrimitiveChain{
+				Primitives:     chain.Primitives,
+				ExecutionOrder: chain.ExecutionOrder,
+			}
+		}
+
+		// Convert edges
+		modelEdges := make([]models.Edge, len(stateDefinition.Edges))
+		for i, edge := range stateDefinition.Edges {
+			modelEdges[i] = models.Edge{
+				Source:       edge.Source,
+				Target:       edge.Target,
+				SourceHandle: edge.SourceHandle,
+			}
+		}
+
+		state := &models.State{
+			Name:               stateDefinition.Name,
+			PreliminaryActions: modelChains,
+			MainAction:         stateDefinition.MainAction,
+			PositionX:          stateDefinition.Position.X,
+			PositionY:          stateDefinition.Position.Y,
+			SuccessTransition:  stateDefinition.Transitions.Success,
+			FailureTransition:  stateDefinition.Transitions.Failure,
+			Edges:              modelEdges,
+		}
+
+		if err := s.db.SaveState(state); err != nil {
+			log.Printf("Error saving state %s: %v", state.Name, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	s.stateDefinitions = flow.States
 	log.Printf("Saved flow with %d states", len(flow.States))
 
@@ -30,44 +71,128 @@ func (s *Server) handleSaveFlow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetStates(w http.ResponseWriter, r *http.Request) {
-	log.Printf("GET /api/states - Returning %d states", len(s.stateDefinitions))
-	json.NewEncoder(w).Encode(s.stateDefinitions)
+	log.Printf("GET /api/states - Fetching states from database")
+
+	states, err := s.db.GetAllStates()
+	if err != nil {
+		log.Printf("Error fetching states: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert database models to core.StateDefinition
+	stateDefinitions := make(map[string]core.StateDefinition)
+	for _, state := range states {
+		// Convert PrimitiveChain slice
+		primitiveChains := make([]core.PrimitiveChain, len(state.PreliminaryActions))
+		for i, chain := range state.PreliminaryActions {
+			primitiveChains[i] = core.PrimitiveChain{
+				Primitives:     chain.Primitives,
+				ExecutionOrder: chain.ExecutionOrder,
+			}
+		}
+
+		// Convert Edge slice
+		edges := make([]core.Edge, len(state.Edges))
+		for i, edge := range state.Edges {
+			edges[i] = core.Edge{
+				Source:       edge.Source,
+				Target:       edge.Target,
+				SourceHandle: edge.SourceHandle,
+			}
+		}
+
+		stateDefinitions[state.Name] = core.StateDefinition{
+			Name:               state.Name,
+			PreliminaryActions: primitiveChains,
+			MainAction:         state.MainAction,
+			Position: core.Position{
+				X: state.PositionX,
+				Y: state.PositionY,
+			},
+			Edges: edges,
+			Transitions: struct {
+				Success string `json:"success"`
+				Failure string `json:"failure"`
+			}{
+				Success: state.SuccessTransition,
+				Failure: state.FailureTransition,
+			},
+		}
+	}
+
+	s.stateDefinitions = stateDefinitions
+	json.NewEncoder(w).Encode(stateDefinitions)
 }
 
 func (s *Server) handleSaveState(w http.ResponseWriter, r *http.Request) {
 	log.Printf("POST /api/states - Saving new state")
-	var state core.StateDefinition
-	if err := json.NewDecoder(r.Body).Decode(&state); err != nil {
+	var stateDefinition core.StateDefinition
+	if err := json.NewDecoder(r.Body).Decode(&stateDefinition); err != nil {
 		log.Printf("Error decoding state: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Initialize all required fields
-	if state.PreliminaryActions == nil {
-		state.PreliminaryActions = []core.PrimitiveChain{}
-	}
-	if state.Position.X == 0 && state.Position.Y == 0 {
-		state.Position = core.Position{
-			X: float64(len(s.stateDefinitions)) * 100,
-			Y: float64(len(s.stateDefinitions)) * 100,
+	// Convert to database model
+	modelChains := make([]models.PrimitiveChain, len(stateDefinition.PreliminaryActions))
+	for i, chain := range stateDefinition.PreliminaryActions {
+		modelChains[i] = models.PrimitiveChain{
+			Primitives:     chain.Primitives,
+			ExecutionOrder: chain.ExecutionOrder,
 		}
 	}
-	if state.Transitions.Success == "" {
-		state.Transitions.Success = "none"
-	}
-	if state.Transitions.Failure == "" {
-		state.Transitions.Failure = "none"
+
+	// Convert edges
+	modelEdges := make([]models.Edge, len(stateDefinition.Edges))
+	for i, edge := range stateDefinition.Edges {
+		modelEdges[i] = models.Edge{
+			Source:       edge.Source,
+			Target:       edge.Target,
+			SourceHandle: edge.SourceHandle,
+		}
 	}
 
-	s.stateDefinitions[state.Name] = state
-	log.Printf("Saved state: %s at position (%f, %f)", state.Name, state.Position.X, state.Position.Y)
+	state := &models.State{
+		Name:               stateDefinition.Name,
+		PreliminaryActions: modelChains,
+		MainAction:         stateDefinition.MainAction,
+		PositionX:          stateDefinition.Position.X,
+		PositionY:          stateDefinition.Position.Y,
+		SuccessTransition:  stateDefinition.Transitions.Success,
+		FailureTransition:  stateDefinition.Transitions.Failure,
+		Edges:              modelEdges,
+	}
 
+	if err := s.db.SaveState(state); err != nil {
+		log.Printf("Error saving state: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.stateDefinitions[state.Name] = stateDefinition
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "success",
-		"state":  state,
+		"state":  stateDefinition,
+	})
+}
+
+func (s *Server) handleDeleteState(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	stateName := vars["name"]
+	log.Printf("DELETE /api/states/%s - Deleting state", stateName)
+
+	if err := s.db.DeleteState(stateName); err != nil {
+		log.Printf("Error deleting state: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	delete(s.stateDefinitions, stateName)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "success",
 	})
 }
 
