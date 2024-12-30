@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import ReactFlow, { 
     Controls, 
     Background,
-    Connection 
+    Connection,
+    addEdge,
+    Edge,
+    Node,
+    OnNodesChange,
+    OnEdgesChange,
+    useNodesState,
+    useEdgesState
 } from 'reactflow';
+import { StateDefinition } from '../types/flow';
 
 interface FlowEditorProps {
     states: StateDefinition[];
@@ -11,8 +19,8 @@ interface FlowEditorProps {
 }
 
 export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave }) => {
-    const [nodes, setNodes] = useState([]);
-    const [edges, setEdges] = useState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
     const onConnect = useCallback((connection: Connection) => {
         setEdges((eds) => addEdge(connection, eds));

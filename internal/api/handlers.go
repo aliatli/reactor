@@ -5,29 +5,7 @@ import (
 	"net/http"
 
 	"github.com/aliatli/reactor/internal/core"
-	"github.com/gorilla/mux"
 )
-
-type Server struct {
-	router           *mux.Router
-	stateDefinitions map[string]core.StateDefinition
-}
-
-func NewServer() *Server {
-	s := &Server{
-		router:           mux.NewRouter(),
-		stateDefinitions: make(map[string]core.StateDefinition),
-	}
-	s.routes()
-	return s
-}
-
-func (s *Server) routes() {
-	s.router.HandleFunc("/api/states", s.handleGetStates).Methods("GET")
-	s.router.HandleFunc("/api/states", s.handleSaveState).Methods("POST")
-	s.router.HandleFunc("/api/primitives", s.handleGetPrimitives).Methods("GET")
-	s.router.HandleFunc("/api/flow", s.handleSaveFlow).Methods("POST")
-}
 
 func (s *Server) handleSaveFlow(w http.ResponseWriter, r *http.Request) {
 	var flow struct {
@@ -39,11 +17,37 @@ func (s *Server) handleSaveFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save flow configuration
 	s.stateDefinitions = flow.States
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "success",
 	})
+}
+
+func (s *Server) handleGetStates(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(s.stateDefinitions)
+}
+
+func (s *Server) handleSaveState(w http.ResponseWriter, r *http.Request) {
+	var state core.StateDefinition
+	if err := json.NewDecoder(r.Body).Decode(&state); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.stateDefinitions[state.Name] = state
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleGetPrimitives(w http.ResponseWriter, r *http.Request) {
+	// Return list of available primitives
+	primitives := []string{
+		"validateOrder",
+		"checkInventory",
+		"processPayment",
+		"allocateInventory",
+		"generateShippingLabel",
+		"shipOrder",
+	}
+	json.NewEncoder(w).Encode(primitives)
 }

@@ -25,3 +25,7 @@ func (s *Server) routes() {
 	s.router.HandleFunc("/api/primitives", s.handleGetPrimitives).Methods("GET")
 	s.router.HandleFunc("/api/flow", s.handleSaveFlow).Methods("POST")
 }
+
+func (s *Server) Router() *mux.Router {
+	return s.router
+}
