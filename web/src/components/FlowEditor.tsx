@@ -1,13 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import ReactFlow, { 
     Controls, 
     Background,
     Connection,
     addEdge,
-    Edge,
-    Node,
-    OnNodesChange,
-    OnEdgesChange,
     useNodesState,
     useEdgesState
 } from 'reactflow';
@@ -26,8 +22,19 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({ states, onSave }) => {
         setEdges((eds) => addEdge(connection, eds));
     }, []);
 
+    useEffect(() => {
+        // Convert states to nodes
+        const stateNodes = states.map((state, index) => ({
+            id: state.name,
+            data: { label: state.name },
+            position: { x: 100 * index, y: 100 }
+        }));
+        setNodes(stateNodes);
+    }, [states]);
+
     return (
         <div style={{ height: '100vh' }}>
+            <button onClick={() => onSave({ nodes, edges })}>Save Flow</button>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
