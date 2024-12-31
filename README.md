@@ -1,42 +1,87 @@
 # Reactor - Visual Flow State Manager
 
-Reactor is a visual flow state management tool that allows users to create, manage, and visualize state machines through an intuitive web interface. It provides a drag-and-drop interface for creating states and defining transitions between them.
-
-This is a WIP implementation of the architecture described in [Dynamic State Management: Composable State Machines with Primitive Operations](https://medium.com/picus-security-engineering/dynamic-state-management-composable-state-machines-with-primitive-operations-7580ccdd0a3d).
-
-## Core Concept
-
-The core concept centers on building states from chains of reusable primitive operations. New system behaviors can be created by composing existing primitives in different configurations, with minimal need for new code. When new functionality is required, developers need only implement new primitive operations, which then become available for use across all states.
-
-### Key Architectural Components
-
-- **Primitive Operations**: Foundational, reusable building blocks that perform single, well-defined operations
-- **State Definitions**: Configuration-driven state definitions that combine primitive chains
-- **Chain of Responsibility**: Two-level implementation for primitive chaining and state execution
-- **Execution Context**: Shared context that flows between primitives and states
+Reactor is a visual flow state management tool that allows you to create, manage, and visualize state machines through an intuitive web interface. Built with React Flow and Go, it provides a powerful way to design and execute complex state workflows.
 
 ## Features
 
-- **Visual Flow Editor**: Drag-and-drop interface for creating and managing states
-- **State Management**: Create, update, and delete states with custom properties
-- **Edge Management**: Define success/failure transitions between states
-- **Primitive Actions**: Assign primitive actions to states with execution order
-- **Persistent Storage**: All states and configurations are saved to SQLite database
-- **Real-time Updates**: Changes are immediately reflected in the UI
-- **Composable States**: Build complex workflows by combining primitive operations
-- **Reusable Primitives**: Create new behaviors by composing existing primitives
+- 🎨 Visual drag-and-drop interface for state machine design
+- 🔄 Success/failure transition paths for each state
+- 🧩 Composable primitive operations
+- 💾 Persistent storage with SQLite
+- 🔌 RESTful API for state management
+- ⚡ Real-time state updates
 
-## Technology Stack
+## Architecture
 
-### Backend (Go)
-- **Web Framework**: Standard Go HTTP server
-- **Database**: GORM with SQLite
-- **Architecture**: Clean architecture with separated concerns
+Reactor implements a composable state machine architecture where:
+- States are composed of primitive operations
+- Each state has success and failure transitions
+- Business logic is isolated in primitive operations
+- State flow is configuration-driven
 
-### Frontend (React + TypeScript)
-- **UI Framework**: React
-- **Flow Visualization**: React Flow
-- **Type Safety**: TypeScript
-- **Styling**: CSS-in-JS
+### Tech Stack
 
-## Project Structure
+- Frontend: React + TypeScript + React Flow
+- Backend: Go + Gorilla Mux
+- Database: SQLite + GORM
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.20+
+- Node.js 16+
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```
+git clone https://github.com/aliatli/reactor.git
+cd reactor
+```
+2. Install&Run backend:
+```
+go mod download
+go run cmd/web/main.go
+```
+3. Install&Run frontend:
+```
+cd web
+npm install
+npm run dev
+```
+
+4. Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+1. **Creating States**
+   - Click "Add New State" to create a new state
+   - Enter a name for the state
+   - Click "Create"
+
+2. **Configuring Primitives**
+   - Click on a state to open the primitive panel
+   - Select primitives to be executed in that state
+   - Click "Save" to update the state
+
+3. **Creating Transitions**
+   - Drag from a state's success (green) or failure (red) handle to another state
+   - Transitions are automatically saved
+
+4. **Saving the Flow**
+   - Click "Save Flow" to persist the entire state machine
+
+### Project Structure
+├── cmd/
+│ └── web/ # Application entry point
+├── internal/
+│ ├── api/ # HTTP handlers and routing
+│ ├── core/ # Core domain types
+│ ├── db/ # Database operations
+│ ├── executor/ # State machine execution
+│ └── models/ # Database models
+├── examples/
+│ └── primitives/ # Example primitive operations
+└── web/ # Frontend React application
