@@ -72,8 +72,8 @@ npm run dev
 
 4. **Saving the Flow**
    - Click "Save Flow" to persist the entire state machine
-```
 ### Project Structure
+```
 ├── cmd/
 │ └── web/ # Application entry point
 ├── internal/
