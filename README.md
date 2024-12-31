@@ -6,12 +6,12 @@ Reactor is a visual flow state management tool that allows you to create, manage
 
 ## Features
 
-- 🎨 Visual drag-and-drop interface for state machine design
-- 🔄 Success/failure transition paths for each state
-- 🧩 Composable primitive operations
-- 💾 Persistent storage with SQLite
-- 🔌 RESTful API for state management
-- ⚡ Real-time state updates
+- Visual drag-and-drop interface for state machine design
+- Success/failure transition paths for each state
+- Composable primitive operations
+- Persistent storage with SQLite
+- RESTful API for state management
+- Real-time state updates
 
 ## Architecture
 
