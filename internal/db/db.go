@@ -16,13 +16,9 @@ func NewDatabase() (*Database, error) {
 		return nil, err
 	}
 
-	// Drop existing tables and recreate them
-	if err := db.Migrator().DropTable(&models.State{}); err != nil {
-		return nil, err
-	}
-
 	// Auto migrate the schema
-	if err := db.AutoMigrate(&models.State{}); err != nil {
+	err = db.AutoMigrate(&models.State{})
+	if err != nil {
 		return nil, err
 	}
 
@@ -30,20 +26,19 @@ func NewDatabase() (*Database, error) {
 }
 
 func (db *Database) SaveState(state *models.State) error {
-	// Try to find existing state
+	// First try to find the state, including soft deleted ones
 	var existingState models.State
-	result := db.Where("name = ?", state.Name).First(&existingState)
+	result := db.Unscoped().Where("name = ?", state.Name).First(&existingState)
 
 	if result.Error == nil {
-		// State exists, update it including edges
-		state.ID = existingState.ID // Keep the same ID
-		return db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(state).Error
-	} else if result.Error == gorm.ErrRecordNotFound {
-		// State doesn't exist, create new
-		return db.Create(state).Error
+		// If found (even if deleted), hard delete it first
+		if err := db.Unscoped().Where("name = ?", state.Name).Delete(&models.State{}).Error; err != nil {
+			return err
+		}
 	}
 
-	return result.Error
+	// Create new state
+	return db.Create(state).Error
 }
 
 func (db *Database) GetAllStates() ([]models.State, error) {
@@ -53,5 +48,6 @@ func (db *Database) GetAllStates() ([]models.State, error) {
 }
 
 func (db *Database) DeleteState(name string) error {
+	// Hard delete the state
 	return db.Unscoped().Where("name = ?", name).Delete(&models.State{}).Error
 }

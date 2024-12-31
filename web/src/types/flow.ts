@@ -1,4 +1,6 @@
-export interface Edge {
+import { Edge as ReactFlowEdge } from 'reactflow';
+
+export interface Edge extends Omit<ReactFlowEdge, 'sourceHandle'> {
     source: string;
     target: string;
     sourceHandle: string;

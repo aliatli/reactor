@@ -80,8 +80,7 @@ func (s *Server) handleGetStates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert database models to core.StateDefinition
-	stateDefinitions := make(map[string]core.StateDefinition)
+	var stateDefinitions []core.StateDefinition
 	for _, state := range states {
 		// Convert PrimitiveChain slice
 		primitiveChains := make([]core.PrimitiveChain, len(state.PreliminaryActions))
@@ -102,10 +101,9 @@ func (s *Server) handleGetStates(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		stateDefinitions[state.Name] = core.StateDefinition{
+		stateDef := core.StateDefinition{
 			Name:               state.Name,
 			PreliminaryActions: primitiveChains,
-			MainAction:         state.MainAction,
 			Position: core.Position{
 				X: state.PositionX,
 				Y: state.PositionY,
@@ -119,9 +117,11 @@ func (s *Server) handleGetStates(w http.ResponseWriter, r *http.Request) {
 				Failure: state.FailureTransition,
 			},
 		}
+		stateDefinitions = append(stateDefinitions, stateDef)
 	}
 
-	s.stateDefinitions = stateDefinitions
+	log.Printf("Returning states: %v", stateDefinitions)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stateDefinitions)
 }
 
