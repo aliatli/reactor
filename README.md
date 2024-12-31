@@ -2,6 +2,8 @@
 
 Reactor is a visual flow state management tool that allows you to create, manage, and visualize state machines through an intuitive web interface. Built with React Flow and Go, it provides a powerful way to design and execute complex state workflows.
 
+Architecture(https://medium.com/picus-security-engineering/dynamic-state-management-composable-state-machines-with-primitive-operations-7580ccdd0a3d)
+
 ## Features
 
 - 🎨 Visual drag-and-drop interface for state machine design
